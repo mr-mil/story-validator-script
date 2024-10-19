@@ -20,7 +20,7 @@ while true; do
       # Download and extract Story Geth
       wget https://story-geth-binaries.s3.us-west-1.amazonaws.com/geth-public/geth-linux-amd64-0.10.0-afaa40a.tar.gz
       tar -xzvf geth-linux-amd64-0.10.0-afaa40a.tar.gz
-      [ ! -d "$HOME/go/bin" ] && mkdir -p $HOME/go/bin
+      mkdir -p $HOME/go/bin
       if ! grep -q "$HOME/go/bin" $HOME/.bash_profile; then
         echo "export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin" >> ~/.bash_profile
       fi
@@ -38,7 +38,7 @@ while true; do
       # Download and extract Story
       wget https://story-geth-binaries.s3.us-west-1.amazonaws.com/story-public/story-linux-amd64-0.12.0-d2e195c.tar.gz
       tar -xzvf story-linux-amd64-0.12.0-d2e195c.tar.gz
-      [ ! -d "$HOME/go/bin" ] && mkdir -p $HOME/go/bin
+      mkdir -p $HOME/go/bin
       if ! grep -q "$HOME/go/bin" $HOME/.bash_profile; then
         echo "export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin" >> ~/.bash_profile
       fi
