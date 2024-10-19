@@ -22,7 +22,7 @@ while true; do
       tar -xzvf geth-linux-amd64-0.10.0-afaa40a.tar.gz
       [ ! -d "$HOME/go/bin" ] && mkdir -p $HOME/go/bin
       if ! grep -q "$HOME/go/bin" $HOME/.bash_profile; then
-        echo "export PATH=$PATH:/usr/local/go/bin:~/go/bin" >> ~/.bash_profile
+        echo "export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin" >> ~/.bash_profile
       fi
       sudo cp geth-linux-amd64-0.10.0-afaa40a/geth $HOME/go/bin/story-geth
 
@@ -34,9 +34,9 @@ while true; do
       tar -xzvf story-linux-amd64-0.12.0-d2e195c.tar.gz
       [ ! -d "$HOME/go/bin" ] && mkdir -p $HOME/go/bin
       if ! grep -q "$HOME/go/bin" $HOME/.bash_profile; then
-        echo "export PATH=$PATH:/usr/local/go/bin:~/go/bin" >> ~/.bash_profile
+        echo "export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin" >> ~/.bash_profile
       fi
-      cp $HOME/story-linux-amd64-0.12.0-d2e195c/story $HOME/go/bin
+      cp $HOME/story-linux-amd64-0.12.0-d2e195c/story $HOME/go/bin/story
 
       # Reload Bash Profile
       source $HOME/.bash_profile
@@ -55,7 +55,7 @@ After=network.target
 
 [Service]
 User=root
-ExecStart=/root/go/bin/story-geth --iliad --syncmode full
+ExecStart=$HOME/go/bin/story-geth --iliad --syncmode full
 Restart=on-failure
 RestartSec=3
 LimitNOFILE=4096
@@ -72,7 +72,7 @@ After=network.target
 
 [Service]
 User=root
-ExecStart=/root/go/bin/story run
+ExecStart=$HOME/go/bin/story run
 Restart=on-failure
 RestartSec=3
 LimitNOFILE=4096
@@ -83,12 +83,12 @@ EOF
 
       # Configure peers
       PEERS=$(curl -sS https://story-rpc.mandragora.io/net_info | jq -r '.result.peers[] | "\(.node_info.id)@\(.remote_ip):\(.node_info.listen_addr)"' | awk -F ':' '{print $1":"$(NF)}' | paste -sd, -)
-      sed -i.bak -e "s/^persistent_peers *=.*/persistent_peers = \"$PEERS\"/" $HOME/.story/story/config/config.toml
-      systemctl restart story
+      [ -f "$HOME/.story/story/config/config.toml" ] && sed -i.bak -e "s/^persistent_peers *=.*/persistent_peers = \"$PEERS\"/" $HOME/.story/story/config/config.toml
+      [ -f "$HOME/.story/story/config/config.toml" ] && systemctl restart story
 
       # Configure seeds
       SEEDS=b6fb541c80d968931602710342dedfe1f5c577e3@story-seed.mandragora.io:23656,51ff395354c13fab493a03268249a74860b5f9cc@story-testnet-seed.itrocket.net:26656,5d7507dbb0e04150f800297eaba39c5161c034fe@135.125.188.77:26656
-      sed -i.bak -e "s/^seeds *=.*/seeds = \"$SEEDS\"/" $HOME/.story/story/config/config.toml
+      [ -f "$HOME/.story/story/config/config.toml" ] && sed -i.bak -e "s/^seeds *=.*/seeds = \"$SEEDS\"/" $HOME/.story/story/config/config.toml
 
       # Download addrbook file
       wget -O $HOME/.story/story/config/addrbook.json https://snapshots.mandragora.io/addrbook.json
