@@ -60,7 +60,7 @@ while true; do
       $HOME/go/bin/story init --network iliad --moniker "$moniker_name"
 
       # Create story-geth service
-sudo tee /etc/systemd/system/story-geth.service > /dev/null <<EOF
+      sudo tee /etc/systemd/system/story-geth.service > /dev/null <<EOF
 [Unit]
 Description=Story Geth Client
 After=network.target
@@ -77,7 +77,7 @@ WantedBy=multi-user.target
 EOF
 
       # Create story service
-sudo tee /etc/systemd/system/story.service > /dev/null <<EOF
+      sudo tee /etc/systemd/system/story.service > /dev/null <<EOF
 [Unit]
 Description=Story Consensus Client
 After=network.target
