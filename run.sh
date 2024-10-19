@@ -59,12 +59,6 @@ while true; do
       # Initialize Story
       $HOME/go/bin/story init --network iliad --moniker "$moniker_name"
 
-      # Verify if initialization was successful
-      if [ ! -d "$HOME/.story" ]; then
-        echo "Error: Story initialization failed. Please check the previous steps."
-        continue
-      fi
-
       # Create story-geth service
       sudo tee /etc/systemd/system/story-geth.service > /dev/null <<EOF
 [Unit]
