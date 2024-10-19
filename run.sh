@@ -1,12 +1,21 @@
 #!/bin/bash
 
 while true; do
-  # Display welcome message and user options
-  echo "Welcome to the Story Validator installation script!"
+# Display welcome message and user options
+  echo -e "\e[1;33m**************************************************\e[0m"
+  echo -e "\e[1;36m*                                                *\e[0m"
+  echo -e "\e[1;36m*  \e[1;32mWelcome to the Story Validator installation script!\e[1;36m  *\e[0m"
+  echo -e "\e[1;36m*                                                *\e[0m"
+  echo -e "\e[1;36m**************************************************\e[0m"
   echo "Please select one of the following options:"
   echo "1) Install and setup validator node"
-  echo "2) Display logs"
-  echo "3) Update using the latest snapshot"
+  echo "2) Display Story logs"
+  echo "3) Display Geth logs"
+  echo "4) Check Sync Node"
+  echo "5) Create Validator (After Install and Sync)"
+  echo "6) Export All Addresses"
+  echo "7) Update using the latest snapshot"
+  echo "8) Exit"
 
   read -p "Enter the number of your choice: " user_choice
 
@@ -93,26 +102,6 @@ LimitNOFILE=4096
 WantedBy=multi-user.target
 EOF
 
-      # Configure peers
-      PEERS=$(curl -sS https://story-rpc.mandragora.io/net_info | jq -r '.result.peers[] | "\(.node_info.id)@\(.remote_ip):\(.node_info.listen_addr)"' | awk -F ':' '{print $1":"$(NF)}' | paste -sd, -)
-      if [ -f "$HOME/.story/config/config.toml" ]; then
-        sed -i.bak -e "s/^persistent_peers *=.*/persistent_peers = \"$PEERS\"/" $HOME/.story/config/config.toml
-        sudo systemctl restart story
-      else
-        echo "Warning: config.toml not found. Skipping peers configuration."
-      fi
-
-      # Configure seeds
-      SEEDS=b6fb541c80d968931602710342dedfe1f5c577e3@story-seed.mandragora.io:23656,51ff395354c13fab493a03268249a74860b5f9cc@story-testnet-seed.itrocket.net:26656,5d7507dbb0e04150f800297eaba39c5161c034fe@135.125.188.77:26656
-      if [ -f "$HOME/.story/config/config.toml" ]; then
-        sed -i.bak -e "s/^seeds *=.*/seeds = \"$SEEDS\"/" $HOME/.story/config/config.toml
-      else
-        echo "Warning: config.toml not found. Skipping seeds configuration."
-      fi
-
-      # Download addrbook file
-      wget -O $HOME/.story/config/addrbook.json https://snapshots.mandragora.io/addrbook.json
-
       # Start and enable services
       sudo systemctl daemon-reload && \
       sudo systemctl start story-geth && \
@@ -121,12 +110,91 @@ EOF
       sudo systemctl daemon-reload && \
       sudo systemctl start story && \
       sudo systemctl enable story
+
+      # Configure peers
+      PEERS=$(curl -sS https://story-rpc.mandragora.io/net_info | jq -r '.result.peers[] | "\(.node_info.id)@\(.remote_ip):\(.node_info.listen_addr)"' | awk -F ':' '{print $1":"$(NF)}' | paste -sd, -)
+      if [ -f "$HOME/.story/story/config/config.toml" ]; then
+        sed -i.bak -e "s/^persistent_peers *=.*/persistent_peers = \"$PEERS\"/" $HOME/.story/story/config/config.toml
+        sudo systemctl restart story
+      else
+        echo "Warning: config.toml not found. Skipping peers configuration."
+      fi
+
+      # Configure seeds
+      SEEDS=b6fb541c80d968931602710342dedfe1f5c577e3@story-seed.mandragora.io:23656,51ff395354c13fab493a03268249a74860b5f9cc@story-testnet-seed.itrocket.net:26656,5d7507dbb0e04150f800297eaba39c5161c034fe@135.125.188.77:26656
+      if [ -f "$HOME/.story/story/config/config.toml" ]; then
+        sed -i.bak -e "s/^seeds *=.*/seeds = \"$SEEDS\"/" $HOME/.story/story/config/config.toml
+        sudo systemctl restart story
+        sudo systemctl restart story-geth
+      else
+        echo "Warning: config.toml not found. Skipping seeds configuration."
+      fi
+
+      # Download addrbook file
+      wget -O $HOME/.story/story/config/addrbook.json https://snapshots.mandragora.io/addrbook.json
       ;;
     2)
-      # Display logs
-      sudo journalctl -u story -f
+      # Display Story logs
+      if [ ! -d "$HOME/.story" ]; then
+        echo "The node has not been installed yet. Please run option 1 to install the node first."
+        continue
+      fi
+	  sudo journalctl -u story -f -o cat
       ;;
-    3)
+	3)
+      # Display Geth logs
+	  if [ ! -d "$HOME/.story" ]; then
+        echo "The node has not been installed yet. Please run option 1 to install the node first."
+        continue
+      fi
+      sudo journalctl -u story-geth -f -o cat
+      ;;
+	4)
+      # Checking Sync
+	  if [ ! -d "$HOME/.story" ]; then
+        echo "The node has not been installed yet. Please run option 1 to install the node first."
+        continue
+      fi
+      curl localhost:26657/status | jq
+      ;;
+	5)
+      # Validator Create
+	  if [ ! -d "$HOME/.story" ]; then
+        echo "The node has not been installed yet. Please run option 1 to install the node first."
+        continue
+      fi
+
+	  while true; do
+		read -p "Are you sure your node is full sync and get faucet for your address? (yes/no): " confirm
+		confirm=$(echo "$confirm" | tr '[:upper:]' '[:lower:]')
+		if [[ "$confirm" == "yes" || "$confirm" == "y" ]]; then
+		  read -p "OK, Please enter your Private Key: " pvkey
+		  story validator create --stake 1000000000000000000 --private-key "$pvkey"
+		elif [[ "$confirm" == "no" || "$confirm" == "n" ]]; then
+		  echo "Operation cancelled."
+		  continue 2
+		else
+		  echo "Invalid input. Please enter yes or no."
+		fi
+	  done
+      ;;
+	6)
+      # Export All Addresses
+	  if [ ! -d "$HOME/.story" ]; then
+        echo "The node has not been installed yet. Please run option 1 to install the node first."
+        continue
+      fi
+	  echo "************** EVM Public Address : ****************"
+      story validator export - export-evm-key
+	  echo "************** Go to https://story.faucetme.pro or https://docs.story.foundation/docs/faucet and get faucet for public EVM address ****************"
+	  echo "************** Private Key : ****************"
+	  story validator export --export-evm-key
+	  cat /root/.story/story/config/private_key.txt
+	  echo "************** Validator Address : ****************"
+	  cd ~/.story/story/config
+	  cat priv_validator_key.json | grep address
+      ;;
+    7)
       # Check if installation has been completed
       if [ ! -d "$HOME/.story" ]; then
         echo "The node has not been installed yet. Please run option 1 to install the node first."
@@ -163,6 +231,10 @@ EOF
       sudo systemctl start story-geth
       sudo systemctl start story
       ;;
+	8)
+	  echo "Exiting the script. Goodbye!"
+	  exit 0
+	  ;;
     *)
       echo "Invalid option! Please try again."
       ;;
