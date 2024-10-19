@@ -29,6 +29,12 @@ while true; do
       # Reload Bash Profile
       source $HOME/.bash_profile
 
+      # Verify if story-geth was copied successfully
+      if [ ! -f "$HOME/go/bin/story-geth" ]; then
+        echo "Error: story-geth was not found in $HOME/go/bin. Please check the download and extraction steps."
+        continue
+      fi
+
       # Download and extract Story
       wget https://story-geth-binaries.s3.us-west-1.amazonaws.com/story-public/story-linux-amd64-0.12.0-d2e195c.tar.gz
       tar -xzvf story-linux-amd64-0.12.0-d2e195c.tar.gz
@@ -41,11 +47,23 @@ while true; do
       # Reload Bash Profile
       source $HOME/.bash_profile
 
+      # Verify if story was copied successfully
+      if [ ! -f "$HOME/go/bin/story" ]; then
+        echo "Error: story was not found in $HOME/go/bin. Please check the download and extraction steps."
+        continue
+      fi
+
       # Get Moniker name from user
       read -p "Please enter your Moniker name: " moniker_name
 
       # Initialize Story
       $HOME/go/bin/story init --network iliad --moniker "$moniker_name"
+
+      # Verify if initialization was successful
+      if [ ! -d "$HOME/.story" ]; then
+        echo "Error: Story initialization failed. Please check the previous steps."
+        continue
+      fi
 
       # Create story-geth service
       sudo tee /etc/systemd/system/story-geth.service > /dev/null <<EOF
@@ -83,12 +101,20 @@ EOF
 
       # Configure peers
       PEERS=$(curl -sS https://story-rpc.mandragora.io/net_info | jq -r '.result.peers[] | "\(.node_info.id)@\(.remote_ip):\(.node_info.listen_addr)"' | awk -F ':' '{print $1":"$(NF)}' | paste -sd, -)
-      [ -f "$HOME/.story/story/config/config.toml" ] && sed -i.bak -e "s/^persistent_peers *=.*/persistent_peers = \"$PEERS\"/" $HOME/.story/story/config/config.toml
-      [ -f "$HOME/.story/story/config/config.toml" ] && systemctl restart story
+      if [ -f "$HOME/.story/story/config/config.toml" ]; then
+        sed -i.bak -e "s/^persistent_peers *=.*/persistent_peers = \"$PEERS\"/" $HOME/.story/story/config/config.toml
+        systemctl restart story
+      else
+        echo "Warning: config.toml not found. Skipping peers configuration."
+      fi
 
       # Configure seeds
       SEEDS=b6fb541c80d968931602710342dedfe1f5c577e3@story-seed.mandragora.io:23656,51ff395354c13fab493a03268249a74860b5f9cc@story-testnet-seed.itrocket.net:26656,5d7507dbb0e04150f800297eaba39c5161c034fe@135.125.188.77:26656
-      [ -f "$HOME/.story/story/config/config.toml" ] && sed -i.bak -e "s/^seeds *=.*/seeds = \"$SEEDS\"/" $HOME/.story/story/config/config.toml
+      if [ -f "$HOME/.story/story/config/config.toml" ]; then
+        sed -i.bak -e "s/^seeds *=.*/seeds = \"$SEEDS\"/" $HOME/.story/story/config/config.toml
+      else
+        echo "Warning: config.toml not found. Skipping seeds configuration."
+      fi
 
       # Download addrbook file
       wget -O $HOME/.story/story/config/addrbook.json https://snapshots.mandragora.io/addrbook.json
@@ -104,7 +130,7 @@ EOF
       ;;
     2)
       # Display logs
-      curl localhost:26657/status | jq
+      sudo journalctl -u story -f
       ;;
     3)
       # Check if installation has been completed
