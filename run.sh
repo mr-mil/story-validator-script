@@ -22,9 +22,9 @@ while true; do
       tar -xzvf geth-linux-amd64-0.10.0-afaa40a.tar.gz
       mkdir -p $HOME/go/bin
       if ! grep -q "$HOME/go/bin" $HOME/.bash_profile; then
-        echo "export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin" >> ~/.bash_profile
+        echo "export PATH=\$PATH:/usr/local/go/bin:\$HOME/go/bin" >> $HOME/.bash_profile
       fi
-      sudo cp geth-linux-amd64-0.10.0-afaa40a/geth $HOME/go/bin/story-geth
+      cp geth-linux-amd64-0.10.0-afaa40a/geth $HOME/go/bin/story-geth
 
       # Reload Bash Profile
       source $HOME/.bash_profile
@@ -40,7 +40,7 @@ while true; do
       tar -xzvf story-linux-amd64-0.12.0-d2e195c.tar.gz
       mkdir -p $HOME/go/bin
       if ! grep -q "$HOME/go/bin" $HOME/.bash_profile; then
-        echo "export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin" >> ~/.bash_profile
+        echo "export PATH=\$PATH:/usr/local/go/bin:\$HOME/go/bin" >> $HOME/.bash_profile
       fi
       cp $HOME/story-linux-amd64-0.12.0-d2e195c/story $HOME/go/bin/story
 
@@ -72,7 +72,7 @@ Description=Story Geth Client
 After=network.target
 
 [Service]
-User=root
+User=$USER
 ExecStart=$HOME/go/bin/story-geth --iliad --syncmode full
 Restart=on-failure
 RestartSec=3
@@ -89,7 +89,7 @@ Description=Story Consensus Client
 After=network.target
 
 [Service]
-User=root
+User=$USER
 ExecStart=$HOME/go/bin/story run
 Restart=on-failure
 RestartSec=3
@@ -101,23 +101,23 @@ EOF
 
       # Configure peers
       PEERS=$(curl -sS https://story-rpc.mandragora.io/net_info | jq -r '.result.peers[] | "\(.node_info.id)@\(.remote_ip):\(.node_info.listen_addr)"' | awk -F ':' '{print $1":"$(NF)}' | paste -sd, -)
-      if [ -f "$HOME/.story/story/config/config.toml" ]; then
-        sed -i.bak -e "s/^persistent_peers *=.*/persistent_peers = \"$PEERS\"/" $HOME/.story/story/config/config.toml
-        systemctl restart story
+      if [ -f "$HOME/.story/config/config.toml" ]; then
+        sed -i.bak -e "s/^persistent_peers *=.*/persistent_peers = \"$PEERS\"/" $HOME/.story/config/config.toml
+        sudo systemctl restart story
       else
         echo "Warning: config.toml not found. Skipping peers configuration."
       fi
 
       # Configure seeds
       SEEDS=b6fb541c80d968931602710342dedfe1f5c577e3@story-seed.mandragora.io:23656,51ff395354c13fab493a03268249a74860b5f9cc@story-testnet-seed.itrocket.net:26656,5d7507dbb0e04150f800297eaba39c5161c034fe@135.125.188.77:26656
-      if [ -f "$HOME/.story/story/config/config.toml" ]; then
-        sed -i.bak -e "s/^seeds *=.*/seeds = \"$SEEDS\"/" $HOME/.story/story/config/config.toml
+      if [ -f "$HOME/.story/config/config.toml" ]; then
+        sed -i.bak -e "s/^seeds *=.*/seeds = \"$SEEDS\"/" $HOME/.story/config/config.toml
       else
         echo "Warning: config.toml not found. Skipping seeds configuration."
       fi
 
       # Download addrbook file
-      wget -O $HOME/.story/story/config/addrbook.json https://snapshots.mandragora.io/addrbook.json
+      wget -O $HOME/.story/config/addrbook.json https://snapshots.mandragora.io/addrbook.json
 
       # Start and enable services
       sudo systemctl daemon-reload && \
@@ -144,11 +144,11 @@ EOF
       sudo systemctl stop story
 
       # Back up your validator state
-      sudo cp $HOME/.story/story/data/priv_validator_state.json $HOME/.story/priv_validator_state.json.backup
+      sudo cp $HOME/.story/data/priv_validator_state.json $HOME/.story/priv_validator_state.json.backup
 
       # Delete previous geth chaindata and story data folders
       sudo rm -rf $HOME/.story/geth/iliad/geth/chaindata
-      sudo rm -rf $HOME/.story/story/data
+      sudo rm -rf $HOME/.story/data
 
       # Download story-geth and story snapshots
       wget -O geth_snapshot.lz4 https://snapshots.mandragora.io/geth_snapshot.lz4
@@ -156,14 +156,14 @@ EOF
 
       # Decompress story-geth and story snapshots
       lz4 -c -d geth_snapshot.lz4 | tar -xv -C $HOME/.story/geth/iliad/geth
-      lz4 -c -d story_snapshot.lz4 | tar -xv -C $HOME/.story/story
+      lz4 -c -d story_snapshot.lz4 | tar -xv -C $HOME/.story
 
       # Delete downloaded story-geth and story snapshots
-      sudo rm -v geth_snapshot.lz4
-      sudo rm -v story_snapshot.lz4
+      rm -v geth_snapshot.lz4
+      rm -v story_snapshot.lz4
 
       # Restore your validator state
-      sudo cp $HOME/.story/priv_validator_state.json.backup $HOME/.story/story/data/priv_validator_state.json
+      sudo cp $HOME/.story/priv_validator_state.json.backup $HOME/.story/data/priv_validator_state.json
 
       # Start your story-geth and story nodes
       sudo systemctl start story-geth
